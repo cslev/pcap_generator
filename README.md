@@ -73,7 +73,7 @@ optional arguments:
 
 ```
 
-###### Example
+## Example
 For creating a PCAP from CSV file called 'input.csv', desired output file called 'output.pcap' with packet sizes of 64,128, and 512 assuming that if there is no VLAN header specified in the CSV file for a given header then apply VLAN tag:505.
 ```
 $ python pcap_generator_from_csv.py -i input.csv -o output -p 64,128,512 --vlan 505
