@@ -433,8 +433,8 @@ if __name__ == '__main__':
                              "For syntax, see input.csv.example!",
                         required=True)
     parser.add_argument('-o','--output',nargs=1,
-                        help="Specify the output PCAP file's name! "
-                             ".pcap extension is not needed!",
+                        help="Specify the output PCAP file's basename! "
+                             "Output will be [output].[PACKETSIZE]bytes.pcap extension is not needed!",
                         required=True)
     parser.add_argument('-p','--packetsizes',nargs=1,
                         help="Specify here the required packetsize! "

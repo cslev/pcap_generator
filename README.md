@@ -44,8 +44,9 @@ optional arguments:
                         Specify the name of the input CSV file. For syntax,
                         see input.csv.example!
   -o OUTPUT, --output OUTPUT
-                        Specify the output PCAP file's name! .pcap extension
-                        is not needed!
+                        Specify the output PCAP file's basename! Output will
+                        be [output].[PACKETSIZE]bytes.pcap extension is not
+                        needed!
   -p PACKETSIZES, --packetsizes PACKETSIZES
                         Specify here the required packetsize! In case of more
                         than one, just create a comma separated list such as
