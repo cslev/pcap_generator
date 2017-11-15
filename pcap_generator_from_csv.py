@@ -83,14 +83,18 @@ ip_header = ('45'  # IP version and header length (multiples of 4 bytes)
              '40 00 40'
              '11'  # Protocol (0x11 = UDP)          
              'YY YY'  # Checksum - will be calculated and replaced later      
-             '0A 01 00 01'  # Source IP (Default: 10.1.0.1)         
-             '0A 00 00 01')  # Dest IP (Default: 10.0.0.1)
+             'SS SS SS SS'  # Source IP (Default: 10.1.0.1)
+             'DD DD DD DD')  # Dest IP (Default: 10.0.0.1)
 
 udp_header = ('ZZ ZZ'  # Source port - will be replaced lated                   
               'XX XX'  # Destination Port - will be replaced later                   
               'YY YY'  # Length - will be calculated and replaced later        
               '00 00')
 
+gtp_header = ('30'              # Version(3), Proto type(1) and other zero fields
+              'FF'              # Type: T-PDU
+              'LL LL'           # Length - will be calculated later
+              'TT TT TT TT')    # TEID - will be added later
 
 
 def getByteLength(str1):
@@ -133,10 +137,10 @@ def backspace(n):
 
 
 def calculateRemainingPercentage(current, n):
-    percent = str("all-byte packets: %d%%" % (int((current / float(n)) * 100)))
+    percent = str("all-byte packets: %d%%\n" % (int((current / float(n)) * 100)))
     sys.stdout.write(percent)
 
-    backspace(len(percent))  # back for n chars
+#    backspace(len(percent))  # back for n chars
 
 
 def readFile(input):
@@ -163,6 +167,9 @@ def readFile(input):
                             'dst_ip':"",
                             'src_port':"",
                             'dst_port':"",
+                            'gtp':"",
+                            'ext_src_ip':"",
+                            'ext_dst_ip':"",
                             'vlan':""
                             # TODO: add more header fields here
                     }
@@ -183,10 +190,11 @@ def readFile(input):
                                         header[h] = parseMAC(header_row[1])
                                     elif h.endswith('ip'):
                                         header[h] = parseIP(header_row[1])
+                                    elif h.endswith('gtp'):
+                                        header[h] = int(header_row[1])
                                     elif h.endswith('port') or h.endswith('vlan'):
                                         header[h] = int(header_row[1])
                                     # TODO: handle here futher header fields
-
 
                     headers.append(header)
 
@@ -211,9 +219,12 @@ def readFile(input):
 
             if hh == 'dst_port' and h[hh] == "":
                 h[hh] = default_dst_port
+
             if hh == 'vlan' and h[hh] == "":
                 h[hh] = default_vlan
 
+            if hh == 'gtp' and h[hh] == "":
+                h[hh] = None
 
     return headers
 
@@ -255,9 +266,6 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
     for i in ps:
         packet_sizes.append(int(i))
 
-
-
-
     headers=readFile(inputfile)
     n=len(headers)
 
@@ -275,6 +283,10 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
         dst_mac = headers[i-1]['dst_mac']
         vlan = headers[i-1]['vlan']
 
+        gtp_teid = headers[i-1]['gtp']
+        ext_src_ip = headers[i-1]['ext_src_ip']
+        ext_dst_ip = headers[i-1]['ext_dst_ip']
+
         #VLAN HANDLING - it requires other eth_type and additional headers
         if vlan is None:
             # update ethernet header for each packet
@@ -287,17 +299,24 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
             # update vlan header
             eth_header = eth_header.replace('0V VV', "0%03x" % vlan)
 
+        # GTP tunneling: it requires additional headers
+        if gtp_teid is not None:
+            gtp = gtp_header
+            gtp = gtp.replace('TT TT TT TT', "%08x" % gtp_teid)
+
+            # generate the external headers
+            gtp_dport = 2152
+            gtp_sport = 2152
+            ext_udp = udp_header.replace('XX XX', "%04x" % gtp_dport)
+            ext_udp = ext_udp.replace('ZZ ZZ', "%04x" % gtp_sport)
+            ext_ip = ip_header
+            ext_ip = ext_ip.replace('SS SS SS SS', ext_src_ip)
+            ext_ip = ext_ip.replace('DD DD DD DD', ext_dst_ip)
 
         # update ip header - see on top how it looks like (the last bytes are encoding the IP address)
-        ip_header = ('45'
-                     '00'
-                     'XX XX'
-                     '00 00'
-                     '40 00 40'
-                     '11'
-                     'YY YY')
-        ip_header += src_ip
-        ip_header += dst_ip
+        ip = ip_header
+        ip = ip.replace('SS SS SS SS', src_ip)
+        ip = ip.replace('DD DD DD DD', dst_ip)
 
         # update ports
         udp = udp_header.replace('XX XX', "%04x" % dport)
@@ -305,17 +324,37 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
 
         # create packets with the different packet sizes but with the same 5-tuple
         for pktSize in packet_sizes:
+            # generate the packet payload (random)
             message = getMessage(pktSize)
 
+            # generate the headers (in case of tunneling: internal headers)
             udp_len = getByteLength(message) + getByteLength(udp_header)
             udp = udp.replace('YY YY', "%04x" % udp_len)
 
             ip_len = udp_len + getByteLength(ip_header)
-            ip = ip_header.replace('XX XX', "%04x" % ip_len)
+            ip = ip.replace('XX XX', "%04x" % ip_len)
             checksum = ip_checksum(ip.replace('YY YY', '00 00'))
             ip = ip.replace('YY YY', "%04x" % checksum)
+            tot_len = ip_len
 
-            pcap_len = ip_len + getByteLength(eth_header)
+            # encapsulation (external header)
+            if gtp_teid is not None:
+                gtp_len = ip_len
+                gtp = gtp.replace('LL LL', "%04x" % gtp_len)
+
+                # generate the external headers
+                ext_udp_len = gtp_len + getByteLength(gtp) + getByteLength(udp_header)
+                ext_udp = ext_udp.replace('YY YY', "%04x" % ext_udp_len)
+
+                ext_ip_len = ext_udp_len + getByteLength(ip_header)
+                if ext_ip_len > 1500:
+                    print "WARNING! Generating >MTU size packets: {}".format(ext_ip_len)
+                ext_ip = ext_ip.replace('XX XX', "%04x" % ext_ip_len)
+                checksum = ip_checksum(ext_ip.replace('YY YY', '00 00'))
+                ext_ip = ext_ip.replace('YY YY', "%04x" % checksum)
+                tot_len = ext_ip_len
+
+            pcap_len = tot_len + getByteLength(eth_header)
             hex_str = "%08x" % pcap_len
             reverse_hex_str = hex_str[6:] + hex_str[4:6] + hex_str[2:4] + hex_str[:2]
             pcaph = pcap_packet_header.replace('XX XX XX XX', reverse_hex_str)
@@ -323,13 +362,27 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
 
             # at the first packet we need the global pcap header
             if i == 1:
-                bytestring = pcap_global_header + pcaph + eth_header + ip + udp + message
+                if gtp_teid is not None:
+                    bytestring = pcap_global_header + pcaph + eth_header + ext_ip + ext_udp + gtp + ip + udp + message
+                else:
+                    bytestring = pcap_global_header + pcaph + eth_header + ip + udp + message
             # for the rest, only the packets are coming
             else:
-                bytestring = pcaph + eth_header + ip + udp + message
+                if gtp_teid is not None:
+                    bytestring = pcaph + eth_header + ext_ip + ext_udp + gtp + ip + udp + message
+                else:
+                    bytestring = pcaph + eth_header + ip + udp + message
 
             # this function is writing out pcap file per se
             writeByteStringToFile(bytestring, pcapfile + str(".%dbytes.pcap" % pktSize))
+
+            # we have to change back the variable fields to their original fixed value else they will not be found
+            ip = ip.replace("%04x" % ip_len, 'XX XX')
+            udp = udp.replace("%04x" % udp_len, 'YY YY')
+            if gtp_teid is not None:
+                gtp = gtp.replace("%04x" % gtp_len, 'LL LL')
+                ext_udp = ext_udp.replace("%04x" % ext_udp_len, 'YY YY')
+                ext_ip = ext_ip.replace("%04x" % ext_ip_len, 'XX XX')
 
 def getRandomMAC():
     return "1a" + str("%0.10X" % random.randint(1,0xffffffffff))
@@ -352,9 +405,6 @@ def getRandomPort(**args):
     if(port == exlude):
         getRandomPort()
     return int(port)
-
-
-
 
 def parseMAC(mac):
     ret_val=mac.replace(":","").upper()
@@ -441,7 +491,7 @@ if __name__ == '__main__':
                         "In case of more than one, just create a comma separated list "
                         "such as 64,112,42. Default: 64",
                         required=False,
-                        default=[64])
+                        default=['64'])
     parser.add_argument('-a','--src_mac',nargs=1,
                         help="Specify default source MAC address if it is not present "
                         "in the input.csv. Default: 00:00:00:00:00:01",
