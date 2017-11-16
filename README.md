@@ -1,3 +1,6 @@
+# UPDATE: Thanks to egerpon, pcap_generator now supports GTP tunneling as well! 
+# TODO: However, README/help/walkthrough has not been updated yet!
+
 # PCAP Generator
 This application generates PCAP files from CSV files using low-level Python tools
 
