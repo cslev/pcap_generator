@@ -59,8 +59,8 @@ CBLINK2 = '\33[6m'
 
 # Global header for pcap 2.4
 pcap_global_header = ('D4 C3 B2 A1'
-                      '02 00'  # File format major revision (i.e. pcap <2>.4)  
-                      '04 00'  # File format minor revision (i.e. pcap 2.<4>)   
+                      '02 00'  # File format major revision (i.e. pcap <2>.4)
+                      '04 00'  # File format minor revision (i.e. pcap 2.<4>)
                       '00 00 00 00'
                       '00 00 00 00'
                       'FF FF 00 00'
@@ -69,26 +69,26 @@ pcap_global_header = ('D4 C3 B2 A1'
 # pcap packet header that must preface every packet
 pcap_packet_header = ('AA 77 9F 47'
                       '90 A2 04 00'
-                      'XX XX XX XX'  # Frame Size (little endian) 
+                      'XX XX XX XX'  # Frame Size (little endian)
                       'YY YY YY YY')  # Frame Size (little endian)
 
-eth_header = ('00 E0 4C 00 00 01'  # Dest Mac    
-              '00 04 0B 00 00 02'  # Src Mac  
+eth_header = ('00 E0 4C 00 00 01'  # Dest Mac
+              '00 04 0B 00 00 02'  # Src Mac
               '08 00')  # Protocol (0x0800 = IP)
 
-ip_header = ('45'  # IP version and header length (multiples of 4 bytes)   
+ip_header = ('45'  # IP version and header length (multiples of 4 bytes)
              '00'
              'XX XX'  # Length - will be calculated and replaced later
              '00 00'
              '40 00 40'
-             '11'  # Protocol (0x11 = UDP)          
-             'YY YY'  # Checksum - will be calculated and replaced later      
+             '11'  # Protocol (0x11 = UDP)
+             'YY YY'  # Checksum - will be calculated and replaced later
              'SS SS SS SS'  # Source IP (Default: 10.1.0.1)
              'DD DD DD DD')  # Dest IP (Default: 10.0.0.1)
 
-udp_header = ('ZZ ZZ'  # Source port - will be replaced lated                   
-              'XX XX'  # Destination Port - will be replaced later                   
-              'YY YY'  # Length - will be calculated and replaced later        
+udp_header = ('ZZ ZZ'  # Source port - will be replaced lated
+              'XX XX'  # Destination Port - will be replaced later
+              'YY YY'  # Length - will be calculated and replaced later
               '00 00')
 
 gtp_header = ('30'              # Version(3), Proto type(1) and other zero fields
@@ -515,9 +515,9 @@ if __name__ == '__main__':
 
     parser.add_argument('-e', '--dst_ip', nargs=1,
                         help="Specify default destination IP address if it is not present "
-                             "in the input.csv. Default: 192.168.88.8",
+                             "in the input.csv. Default: 10.0.0.2",
                         required=False,
-                        default=["192.168.88.8"])
+                        default=["10.0.0.2"])
 
     parser.add_argument('-f', '--src_port', nargs=1,
                         help="Specify default source port if it is not present "
@@ -526,9 +526,9 @@ if __name__ == '__main__':
                         default=["1234"])
     parser.add_argument('-g', '--dst_port', nargs=1,
                         help="Specify default destination port if it is not present "
-                             "in the input.csv. Default: 808",
+                             "in the input.csv. Default: 80",
                         required=False,
-                        default=["808"])
+                        default=["80"])
 
     args = parser.parse_args()
 
