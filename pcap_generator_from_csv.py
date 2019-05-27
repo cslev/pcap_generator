@@ -538,7 +538,7 @@ if __name__ == '__main__':
 
     parser.add_argument('-v','--verbose', action='store_true', required=False, dest='verbose',
     help="Enabling verbose mode")
-    parser.set_defaults(verbose=False))
+    parser.set_defaults(verbose=False)
 
     args = parser.parse_args()
 
