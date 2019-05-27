@@ -250,6 +250,7 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
     global default_src_port, default_dst_port
     global default_vlan
     global packet_sizes
+    global verbose
 
     packet_sizes = []
     default_src_mac = kwargs.get('src_mac')
@@ -259,6 +260,8 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
     default_src_port = int(kwargs.get('src_port'))
     default_dst_port = int(kwargs.get('dst_port'))
     default_vlan = kwargs.get('vlan')
+    verbose = kwargs.get('verbose')
+
     if default_vlan is not None:
         default_vlan = int(default_vlan)
 
@@ -374,6 +377,9 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
                     bytestring = pcaph + eth_header + ip + udp + message
 
             # this function is writing out pcap file per se
+            if verbose:
+                print "Packet to be written out:\n{}".format(headers[i-1])
+
             writeByteStringToFile(bytestring, pcapfile + str(".%dbytes.pcap" % pktSize))
 
             # we have to change back the variable fields to their original fixed value else they will not be found
@@ -530,6 +536,10 @@ if __name__ == '__main__':
                         required=False,
                         default=["80"])
 
+    parser.add_argument('-v','--verbose', action='store_true', required=False, dest='verbose',
+    help="Enabling verbose mode")
+    parser.set_defaults(verbose=False))
+
     args = parser.parse_args()
 
     input = args.input[0]
@@ -543,6 +553,7 @@ if __name__ == '__main__':
     dst_port = args.dst_port[0]
     vlan = args.vlan[0]
 
+    verbose=args.verbose
 
     print bold + "The following arguments were set:" + none
     print bold + "Input file:            {}{}{}".format(green,input,none)
@@ -573,5 +584,6 @@ if __name__ == '__main__':
                             dst_ip=dst_ip,
                             src_port=src_port,
                             dst_port=dst_port,
-                            vlan=vlan
+                            vlan=vlan,
+                            verbose=verbose
                          )
