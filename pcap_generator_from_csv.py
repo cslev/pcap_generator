@@ -5,6 +5,10 @@ import binascii
 import random
 import argparse
 
+#for timestamping
+import time
+import re
+
 # ----- ===== Configurable parameteres ==== ----
 # DO NOT TOUCH OTHER VARIABLES
 # default necessary values if there is nothing provided
@@ -67,8 +71,8 @@ pcap_global_header = ('D4 C3 B2 A1'
                       '01 00 00 00')
 
 # pcap packet header that must preface every packet
-pcap_packet_header = ('AA 77 9F 47'
-                      '90 A2 04 00'
+pcap_packet_header = ('T1 T1 T1 T1'  # time in seconds (little endian)
+                      'T2 T2 T2 T2'  # time in microseconds (little endian)
                       'XX XX XX XX'  # Frame Size (little endian)
                       'YY YY YY YY')  # Frame Size (little endian)
 
@@ -96,6 +100,34 @@ gtp_header = ('30'              # Version(3), Proto type(1) and other zero field
               'LL LL'           # Length - will be calculated later
               'TT TT TT TT')    # TEID - will be added later
 
+
+def _reverseEndian(hexstring):
+    #create a list of 2-characters of the input
+    big_endian = re.findall('..', hexstring)
+    little_endian=""
+    for i in reversed(big_endian):
+        little_endian+=i
+
+    return little_endian
+
+
+def createTimestamp(**kwargs):
+    # this is a timestamp in seconds.microseconds, e.g., 1570435931.7557144
+    _time = kwargs.get('time',time.time())
+    _time="%.8f" % _time # str(time) is not working well below python3 as floats become reduced to two decimals only
+    #split it to seconds and microseconds
+    _time=_time.split('.')
+    # time is a list now
+    sec  = _time[0]
+    usec = _time[1]
+    # convert the to hex
+    sec = ("%08x" % int(sec))   # now, we have sec in hex (big endian)
+    usec = ("%08x" % int(usec)) # now, we have usec in hex (big endian)
+
+    sec  = _reverseEndian(sec)
+    usec = _reverseEndian(usec)
+
+    return (sec,usec)
 
 def getByteLength(str1):
     return len(''.join(str1.split())) / 2
@@ -156,11 +188,12 @@ def readFile(input):
                 packet_counter=1
                 if not (line.startswith("#", 0, 1)):
                     #assume that the desctiption file is a CSV file and look like this:
-                    ##src_mac=<SRC_MAC>,dst_mac=<DST_MAC>, src_ip=<SRC_IP>, dst_ip<DST_IP>, src_port=<SRC_PORT>,dst_port=<DST_PORT>, ?? - unimplemented
+                    ##timestamp=123123124.123123, src_mac=<SRC_MAC>,dst_mac=<DST_MAC>, src_ip=<SRC_IP>, dst_ip<DST_IP>, src_port=<SRC_PORT>,dst_port=<DST_PORT>,gtp=<GTP_TEID>, ?? - unimplemented
                     #let us further assume that order is not important
                     one_line = line.split(',')
                     # this dictionary will store eventually one complete header
                     header = {
+                            'timestamp':"",
                             'src_mac':"",
                             'dst_mac':"",
                             'src_ip':"",
@@ -190,10 +223,11 @@ def readFile(input):
                                         header[h] = parseMAC(header_row[1])
                                     elif h.endswith('ip'):
                                         header[h] = parseIP(header_row[1])
-                                    elif h.endswith('gtp'):
+                                    elif h.endswith('port') or h.endswith('vlan') or h.endswith('gtp'):
                                         header[h] = int(header_row[1])
-                                    elif h.endswith('port') or h.endswith('vlan'):
-                                        header[h] = int(header_row[1])
+                                    elif h.endswith('timestamp'):
+                                        header[h] = h #it is a string, but it can remain a string
+
                                     # TODO: handle here futher header fields
 
                     headers.append(header)
@@ -202,6 +236,9 @@ def readFile(input):
         #inside the list
         for hh in h:
             #inside one header
+            if hh == 'timestamp' and h[hh]=="":
+                h[hh] = default_timestamp
+
             if hh == 'src_mac' and h[hh]=="":
                 h[hh]=parseMAC(default_src_mac)
 
@@ -243,6 +280,9 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
         src_port = default src_port
         dst_port = default dst_port
         vlan = default vlan
+        gtp_teid = default gtp_teid
+        timestamp = default timestamp
+
     :return: None
     '''
     global default_src_mac, default_dst_mac
@@ -251,6 +291,7 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
     global default_vlan
     global packet_sizes
     global verbose
+    global default_timestamp
 
     packet_sizes = []
     default_src_mac = kwargs.get('src_mac')
@@ -260,7 +301,11 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
     default_src_port = int(kwargs.get('src_port'))
     default_dst_port = int(kwargs.get('dst_port'))
     default_vlan = kwargs.get('vlan')
+    gtp_teid = kwargs.get('gtp_teid')
     verbose = kwargs.get('verbose')
+    default_timestamp = kwargs.get('timestamp')
+
+
 
     if default_vlan is not None:
         default_vlan = int(default_vlan)
@@ -272,12 +317,13 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
     headers=readFile(inputfile)
     n=len(headers)
 
-    # write out header information to file - for easier NF configuration later - 5-tuples are in .nfp files as well
+    # write out header information to file - for easier NF configuration later - 5-tuples are in .nfo files as well
     for i in range(1, int(n) + 1):
         # print out the remaining percentage to know when the generate will finish
         calculateRemainingPercentage(i, int(n))
 
         # set here the 5-tuple variables
+        timestamp = headers[i-1]['timestamp']
         sport = headers[i-1]['src_port']
         dport = headers[i-1]['dst_port']
         src_ip = headers[i-1]['src_ip']
@@ -360,8 +406,17 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
             pcap_len = tot_len + getByteLength(eth_header)
             hex_str = "%08x" % pcap_len
             reverse_hex_str = hex_str[6:] + hex_str[4:6] + hex_str[2:4] + hex_str[:2]
+
             pcaph = pcap_packet_header.replace('XX XX XX XX', reverse_hex_str)
             pcaph = pcaph.replace('YY YY YY YY', reverse_hex_str)
+
+            #adding timestamp
+            if timestamp is None: #timestamp was not set, use current time
+              time = createTimestamp()
+            else:
+              time = createTimestamp(timestamp)
+            pcaph = pcaph.replace('T1 T1 T1 T1', time[0]) # time[0] is seonds
+            pcaph = pcaph.replace('T2 T2 T2 T2', time[1]) # time[1] is useonds
 
             # at the first packet we need the global pcap header
             if i == 1:
@@ -468,7 +523,9 @@ def showHelp():
                                                "  VLAN \n" \
                                                "  L2 (src and dst MAC) \n" \
                                                "  L3 (src and dst IP) \n" \
-                                               "  L4 (src and dst PORT) \n" + none
+                                               "  L4 (src and dst PORT) \n" \
+                                               "  GTP_TEID\n " \
+                                               "  TIMESTAMP for each packet\n "+ none
     print "Any further header definition in the file is sleemlessly ignored!"
     print ""
     print "In case of missing L2, L3, L4 information in the inputfile, default values will be used!"
@@ -535,6 +592,15 @@ if __name__ == '__main__':
                              "in the input.csv. Default: 80",
                         required=False,
                         default=["80"])
+    parser.add_argument('-j', '--gtp_teid', nargs=1,
+                        help="Specify default GTP_TEID if it is not present "
+                             "in the input.csv. Default: NO GTP TEID",
+                        default=[None])
+    parser.add_argument('-t', '--timestamp', nargs=1,
+                        help="Specify the default timestamp for each packet if it is not present "
+                             "in the input.csv. Default: Use current time",
+                        required=False,
+                        default=[None])
 
     parser.add_argument('-v','--verbose', action='store_true', required=False, dest='verbose',
     help="Enabling verbose mode")
@@ -552,6 +618,8 @@ if __name__ == '__main__':
     src_port = args.src_port[0]
     dst_port = args.dst_port[0]
     vlan = args.vlan[0]
+    gtp_teid = args.gtp_teid[0]
+    timestamp = args.timestamp[0]
 
     verbose=args.verbose
 
@@ -566,6 +634,9 @@ if __name__ == '__main__':
     print bold + "SRC PORT if undefined: {}{}{}".format(green,src_port,none)
     print bold + "DST PORT if undefined: {}{}{}".format(green,dst_port,none)
     print bold + "VLAN if undefined:     {}{}{}".format(green,vlan,none)
+    print bold + "GTP_TEID if undefined  {}{}{}".format(green,gtp_teid,none)
+    print bold + "TIMESTAMP if undefined:{}{}{}".format(green,timestamp,none)
+
 
 
     for i in packet_sizes:
@@ -585,5 +656,7 @@ if __name__ == '__main__':
                             src_port=src_port,
                             dst_port=dst_port,
                             vlan=vlan,
-                            verbose=verbose
+                            verbose=verbose,
+                            gtp_teid=gtp_teid,
+                            timestamp=timestamp
                          )
