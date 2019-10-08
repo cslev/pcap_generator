@@ -114,7 +114,10 @@ def _reverseEndian(hexstring):
 def createTimestamp(**kwargs):
     # this is a timestamp in seconds.microseconds, e.g., 1570435931.7557144
     _time = kwargs.get('time',time.time())
-    _time="%.8f" % _time # str(time) is not working well below python3 as floats become reduced to two decimals only
+
+    #check for float type
+    if isinstance(_time,float):
+        _time="%.8f" % _time # str(time) is not working well below python3 as floats become reduced to two decimals only
     #split it to seconds and microseconds
     _time=_time.split('.')
     # time is a list now
@@ -414,7 +417,7 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
             if timestamp is None: #timestamp was not set, use current time
               time = createTimestamp()
             else:
-              time = createTimestamp(timestamp)
+              time = createTimestamp(time=timestamp)
             pcaph = pcaph.replace('T1 T1 T1 T1', time[0]) # time[0] is seonds
             pcaph = pcaph.replace('T2 T2 T2 T2', time[1]) # time[1] is useonds
 
