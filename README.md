@@ -1,6 +1,3 @@
-# UPDATE: Thanks to egerpon, pcap_generator now supports GTP tunneling as well! 
-# TODO: However, README/help/walkthrough has not been updated yet!
-
 # PCAP Generator
 This application generates PCAP files from CSV files using low-level Python tools
 
@@ -12,8 +9,10 @@ src_mac=00:00:00:00:00:01,dst_mac=00:00:00:00:00:02, src_ip=10.0.0.1, dst_ip=10.
 src_mac=00:00:00:00:00:01,dst_mac=00:00:00:00:00:02, src_ip=10.0.0.1, dst_ip=10.0.0.2, dst_port=2222,vlan=10
 src_mac=20:00:00:00:00:01,dst_mac=20:00:00:00:00:02, vlan=1000
 src_mac=00:00:00:00:00:01,dst_mac=00:00:00:00:00:02, src_ip=10.0.0.1, dst_ip=10.0.0.2, dst_port=22
+ext_src_ip=192.168.1.20, ext_dst_ip=192.168.1.1, gtp=255, src_ip=10.0.0.1, dst_ip=10.0.0.2, src_port=2048, dst_port=4096
+
 ```
- If a necessary L2/L3/L4 header field is missing  default values will be used, which can be changed by input arguments.
+ If a necessary L2/L3/L4/GTP header field is missing  default values will be used, which can be changed by input arguments.
  
 ## Requirements
  - Python
@@ -74,6 +73,9 @@ optional arguments:
   -g DST_PORT, --dst_port DST_PORT
                         Specify default destination port if it is not present
                         in the input.csv. Default: 808
+  -j GTP_TEID, --gtp_teid GTP_TEID
+                        Specify default GTP_TEID if it is not present in the
+                        input.csv. Default: NO GTP TEID
 
 ```
 
@@ -84,4 +86,6 @@ $ python pcap_generator_from_csv.py -i input.csv -o output -p 64,128,512 --vlan 
 ```
 Your PCAP files will be 'output.64bytes.pcap', 'output.128bytes.pcap', and 'output.512bytes.pcap' all consisting of the same header fields but in different packet sizes.
 
+
+### Thanks to egerpon for adding GTP feature
 
