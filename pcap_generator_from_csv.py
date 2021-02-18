@@ -8,6 +8,7 @@ import argparse
 #for timestamping
 import time
 import re
+import os #for playing around with set input path
 
 # ----- ===== Configurable parameteres ==== ----
 # DO NOT TOUCH OTHER VARIABLES
@@ -635,6 +636,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     input = args.input[0]
+    #handle Windows path
+    input = os.path.normpath(input)
+    
     output = args.output[0]
     packet_sizes = (args.packetsizes[0]).split(',')
     src_mac = args.src_mac[0]
