@@ -89,3 +89,17 @@ Your PCAP files will be 'output.64bytes.pcap', 'output.128bytes.pcap', and 'outp
 
 ### Thanks to egerpon for adding GTP feature
 
+## Want to quickly create a pcap with random packets?
+I am always having this issue. There is a software-based network function and I would like to measure its performance with an RSS-enabling pcap file, i.e., to quickly send some random "rubbish" towards it but the trace is diverse enough to enforce the network function to scale and use more queues and/or CPU cores for packet processing.
+
+Below, is a simple BASH loop to create an input file for `pcap_generator_from_csv.py` than consist of **100** random packets:
+```
+for i in {1..100}; 
+do 
+  ip=$(printf "%d.%d.%d.%d\n" "$((RANDOM % 256))" "$((RANDOM % 256))" "$((RANDOM % 256))" "$((RANDOM % 256))"); 
+  src_port=$(printf "%d\n" "$((RANDOM % 65535))");
+  dst_port=$(printf "%d\n" "$((RANDOM % 65535))"); 
+  echo "src_mac=00:00:00:00:00:01,dst_mac=00:00:00:00:00:02, src_ip=10.0.0.1, dst_ip=${ip}, src_port=${src_port}, dst_port=${dst_port}" >> rss_capable.txt;
+done
+```
+Once ready, you can use the freshly made `rss_capable.txt` to generate the actual pcap file accordingly.
