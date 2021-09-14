@@ -47,8 +47,10 @@ $ python pcap_generator_from_csv.py -h
 
 usage: pcap_generator_from_csv.py [-h] -i INPUT -o OUTPUT [-p PACKETSIZES]
                                   [-a SRC_MAC] [-b DST_MAC] [-c VLAN]
-                                  [-d SRC_IP] [-e DST_IP] [-f SRC_PORT]
-                                  [-g DST_PORT]
+                                  [-d SRC_IP] [-e DST_IP] [-f TTL]
+                                  [-g SRC_PORT] [-j DST_PORT] [-k GTP_TEID]
+                                  [-l TIMESTAMP] [-m ETHER_TYPE] [-n SRC_IPV6]
+                                  [-u DST_IPV6] [-w PROTOCOL] [-v]
 
 Usage of PCAP generator from CSV file
 
@@ -65,29 +67,54 @@ optional arguments:
                         Specify here the required packetsize! In case of more
                         than one, just create a comma separated list such as
                         64,112,42. Default: 64
-  -a SRC_MAC, --src_mac SRC_MAC
+  -a SRC_MAC, --src-mac SRC_MAC
                         Specify default source MAC address if it is not
                         present in the input.csv. Default: 00:00:00:00:00:01
-  -b DST_MAC, --dst_mac DST_MAC
+  -b DST_MAC, --dst-mac DST_MAC
                         Specify default destination MAC address if it is not
                         present in the input.csv. Default: 00:00:00:00:00:02
   -c VLAN, --vlan VLAN  Specify default VLAN tag if it is not present in the
                         input.csv. Default: No VLAN
-  -d SRC_IP, --src_ip SRC_IP
+  -d SRC_IP, --src-ip SRC_IP
                         Specify default source IP address if it is not present
                         in the input.csv. Default: 10.0.0.1
-  -e DST_IP, --dst_ip DST_IP
+  -e DST_IP, --dst-ip DST_IP
                         Specify default destination IP address if it is not
-                        present in the input.csv. Default: 192.168.88.8
-  -f SRC_PORT, --src_port SRC_PORT
+                        present in the input.csv. Default: 10.0.0.2
+  -f TTL, --ttl TTL     Specify default TTL if it is not present in the
+                        input.csv. Default: 10
+  -g SRC_PORT, --src-port SRC_PORT
                         Specify default source port if it is not present in
                         the input.csv. Default: 1234
-  -g DST_PORT, --dst_port DST_PORT
+  -j DST_PORT, --dst-port DST_PORT
                         Specify default destination port if it is not present
-                        in the input.csv. Default: 808
-  -j GTP_TEID, --gtp_teid GTP_TEID
+                        in the input.csv. Default: 80
+  -k GTP_TEID, --gtp-teid GTP_TEID
                         Specify default GTP_TEID if it is not present in the
                         input.csv. Default: NO GTP TEID
+  -l TIMESTAMP, --timestamp TIMESTAMP
+                        Specify the default timestamp for each packet if it is
+                        not present in the input.csv. Default: Use current
+                        time
+  -m ETHER_TYPE, --ether-type ETHER_TYPE
+                        Sepcify the default ether type for each packet if is
+                        not present (ipv4/ipv6) in the input.csv. Default:
+                        ipv4
+  -n SRC_IPV6, --src-ipv6 SRC_IPV6
+                        Specify the default source IPv6 address if IPv6 is
+                        desired and the value is not presentin the input.csv.
+                        Default: 2603:c022:0001:52dd:dead:beef:abba:edda (0s
+                        are not OMITTED!)
+  -u DST_IPV6, --dst-ipv6 DST_IPV6
+                        Specify the default destination IPv6 address if IPv6
+                        is desired and the value is not presentin the
+                        input.csv. Default:
+                        2405:0800:9030:1bd2:dead:beef:dead:beef (0s are not
+                        OMITTED!)
+  -w PROTOCOL, --protocol PROTOCOL
+                        Specify the default protocol if not present
+                        (udp/tcp_syn) Default: udp
+  -v, --verbose         Enabling verbose mode
 
 ```
 
