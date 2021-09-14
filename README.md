@@ -86,8 +86,16 @@ $ python pcap_generator_from_csv.py -i input.csv -o output -p 64,128,512 --vlan 
 ```
 Your PCAP files will be 'output.64bytes.pcap', 'output.128bytes.pcap', and 'output.512bytes.pcap' all consisting of the same header fields but in different packet sizes.
 
+## WARNING
+THE SCRIPT IS NOT BULLET-PROOF! 
 
-### Thanks to egerpon for adding GTP feature
+PAY ATTENTION TO YOUR HEADER DATA
+
+For instance, supply IPv4 addresses when ether_type=0x0800 and IPv6 addresses when ether_type=0x86dd and vice versa!
+
+## GTP feature 
+Thanks to @egerpon for adding GTP feature
+### UPDATE: seems to be broken
 
 ## Want to quickly create a pcap with random packets?
 I am always having this issue. There is a software-based network function and I would like to measure its performance with an RSS-enabling pcap file, i.e., to quickly send some random "rubbish" towards it but the trace is diverse enough to enforce the network function to scale and use more queues and/or CPU cores for packet processing.
