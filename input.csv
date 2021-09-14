@@ -1,10 +1,12 @@
 # This is a commented line! Use as many as you want
 # Supported header fields as keys in this CSV file:
-# src_mac=<SMAC>,dst_mac=<DMAC>,src_ip=<SIP>, dst_ip=<DIP>, src_port=<SP>, dst_port=<DP>, ?? Unsupported
-# If a necessary timestamp/L2/L3/L4/GTP (header) field is missing  default values will be used, which can be changed by input arguments.
+# src_mac=<SMAC>,dst_mac=<DMAC>,src_ip=<SIP>, dst_ip=<DIP>, src_port=<SP>, dst_port=<DP>, gtp=<GTP>, protocol=<udp/tcp_syn>, ether_type=<ipv4/ipv6>, ?? Unsupported
+# If a necessary timestamp/L2/L3/L4/GTP (header)/etc. field is missing  default values will be used, which can be changed by input arguments.
 timestamp=1570500810.431494,src_mac=00:00:00:00:00:01,dst_mac=00:00:00:00:00:02, src_ip=10.0.0.1, dst_ip=10.0.0.2, src_port=12345, dst_port=22
 src_mac=00:00:00:00:00:01,dst_mac=00:00:00:00:00:02, src_ip=10.0.0.1, dst_ip=10.0.0.2, dst_port=22
 src_mac=00:00:00:00:00:01,dst_mac=00:00:00:00:00:02, src_ip=10.0.0.1, dst_ip=10.0.0.2, dst_port=8192,vlan=10
 src_mac=20:00:00:00:00:01,dst_mac=20:00:00:00:00:02, vlan=1000
 src_mac=00:00:00:00:00:01,dst_mac=00:00:00:00:00:02, src_ip=10.0.0.1, dst_ip=10.0.0.2, dst_port=22
 ext_src_ip=192.168.1.20, ext_dst_ip=192.168.1.1, gtp=255, src_ip=10.0.0.1, dst_ip=10.0.0.2, src_port=2048, dst_port=4096
+src_mac=00:00:00:00:00:01,dst_mac=00:00:00:00:00:02, src_ipv6=2603:abba:abba:acdc:dead:beef:dead:beef, dst_ipv6=2400:abba:edda:acdc:dbf3:52a8:2cb7:b38e, src_port=11771, dst_port=21,ether_type=ipv6,protocol=tcp_syn
+src_mac=00:00:00:00:00:01,dst_mac=00:00:00:00:00:02, src_ipv6=2603:abba:abba:acdc:dead:beef:dead:beef, dst_ipv6=2400:abba:edda:acdc:dbf3:52a8:2cb7:b38e,dst_port=53,ether_type=ipv6,protocol=udp
