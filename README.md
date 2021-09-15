@@ -26,6 +26,13 @@ src_mac=00:00:00:00:00:01,dst_mac=00:00:00:00:00:02, src_ipv6=2603:abba:abba:acd
     - UDP
     - TCP SYN
 
+## TODO:
+Checksum calculations for UDP and TCP are wrong!
+
+For IPv4 and UDP, it does not matter at all.
+
+In case you want to replay pcap towards a real destination (instead of the other end of the link), checksums must be correct!
+
 ## Requirements
  - Python
  
