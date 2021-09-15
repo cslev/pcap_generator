@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import sys
 import binascii
@@ -243,19 +243,48 @@ def backspace(n):
     # print((b'\x08' * n).decode(), end='') # use \x08 char to go back
     sys.stdout.write('\r' * n)  # use '\r' to go back
 
+def rawcount(filename):
+    '''
+    Ultrafast way to count number of lines in a file. Comes pretty handy when parsing the csv file and we want to show its progress.
+    comes from here: https://stackoverflow.com/questions/845058/how-to-get-line-count-of-a-large-file-cheaply-in-python
+    Works with python3! python2 might not be sufficient for the raw interface
+    '''
+    f = open(filename, 'rb')
+    lines = 0
+    buf_size = 1024 * 1024
+    read_f = f.raw.read
 
-def calculateRemainingPercentage(current, n):
-    percent = str("all-byte packets: %d%%\n" % (int((current / float(n)) * 100)))
-    sys.stdout.write(percent)
+    buf = read_f(buf_size)
+    while buf:
+        lines += buf.count(b'\n')
+        buf = read_f(buf_size)
+
+    return lines
+
+
+def calculateRemainingPercentage(message, current, n):
+    percent = str(message + ": %d%%" % (int((current / float(n)) * 100)))
+    if(current < n):
+        print(percent, end="\r")
+    else:
+        print(percent, end="")
+        print("\t{}{}[DONE]{}".format(bold,green,none))
+
+    # sys.stdout.write(percent)
 
 #    backspace(len(percent))  # back for n chars
 
 
 def readFile(input):
+    #get the number of lines in the file
+    num_lines = rawcount(input)
     headers = list() # list of dictionaries
+    print("\n### PROCESSING INPUT FILE ###")
     with open(input, 'r') as lines:
         line_num = 1
         for line in lines:
+            #progress status
+            calculateRemainingPercentage("|-- Parsing input .CSV file", line_num, num_lines)
             #remove blank spaces
             line = line.strip()
             #removed blank lines
@@ -321,6 +350,9 @@ def readFile(input):
                                     # NOTE: handle here futher header fields that are different from the above
                                     # or update the above ones to parse the new header fields accordingly
                     headers.append(header)
+            
+            #update line_num to update progress bar
+            line_num+=1
 
     #Set necessary header fields (e.g., source MAC) data to default values if csv file did contain them
     for h in headers:
@@ -438,10 +470,11 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
     headers=readFile(inputfile)
     n=len(headers)
 
+    print("\n### PCAP GENERATION ###")
     # write out header information to file - 5-tuples will be printed in an .nfo files as well
     for i in range(1, int(n) + 1):
         # print out the remaining percentage to know when the generate will finish
-        calculateRemainingPercentage(i, int(n))
+        calculateRemainingPercentage("|-- Generating packets in all packet sizes required", i, int(n))
 
         # set here the header variables
         timestamp = headers[i-1]['timestamp']
@@ -569,9 +602,13 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
             tcp_syn = tcp_syn_header.replace('XX XX', "%04x" % dport)
             tcp_syn = tcp_syn.replace('ZZ ZZ', "%04x" % sport)
             tcp_syn = tcp_syn.replace('NN NN NN NN', "%08x" % random.randint(1,65535))
-            tcp_syn_len = getByteLength(tcp_syn) / 4 #tcp_syn_length requires length in the number of 32-bit words, hence we divide by 4
+            tcp_syn_len = int(getByteLength(tcp_syn) / 4) #tcp_syn_length requires length in the number of 32-bit words, hence we divide by 4
+            # print(ipv6)
+            # print(tcp_syn)
+            # print(tcp_syn_len)
             tcp_syn = tcp_syn.replace('L', "%01x" % tcp_syn_len)
             # print(tcp_syn)
+            
             # tcp_syn = tcp_syn.replace('CC CC', checksum)
         
         #TODO: else other protocols/subprotocols, e.g., TCP SYN-ACK, TCP ACK
@@ -594,7 +631,9 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
             elif protocol == "tcp_syn":
                 ip_len = message_len + getByteLength(tcp_syn_header) #add tcp syn length + payload to ip len
                 #we don't use TCP protocol length as it is in the TCP header, but will use this info in the IP length and PCAP length later on
-  
+                
+                
+
             # print(ether_type)
             if ether_type == "ipv4":
                 # +----------------+
@@ -611,9 +650,21 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
                 
                 #UDP checksum calculation
                 if protocol == "udp": # we need all headers for this, hence we have this statement here
+                    #TODO: checksum calculation is wrong
                     udp_checksum = ip_checksum(udp.replace('CC CC', '00 00') + ip + message)
                     udp = udp.replace('CC CC', "%04x" % udp_checksum)
 
+                #TCP checksum calculation
+                if protocol == "tcp_syn":
+                    message_len_16bit= "%04x" % message_len
+                    
+                    #TODO: checksum calculation is wrong
+                    print(message_len, message_len_16bit)
+                    tcp_len_new = ip_len - getByteLength(tcp_syn)
+                    tcp_checksum = ip_checksum(src_ip + dst_ip + '06' + "%02x" % tcp_len_new + tcp_syn + message)
+                    print(tcp_checksum)
+                    tcp_syn = tcp_syn.replace('CC CC', "%04x" % tcp_checksum)
+                    print(tcp_syn)
                 # encapsulation (external header) #TODO: FIX GTP
                 if gtp_teid is not None: # GTP is only supported for IPv4 and UDP packets
                     gtp_len = ip_len
@@ -653,7 +704,13 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
                 if protocol == "udp": # we need all headers for this, hence we have this statement here
                     udp_checksum = ip_checksum(udp.replace('CC CC', '00 00') + ipv6 + message)
                     udp = udp.replace('CC CC', "%04x" % udp_checksum)
-            
+
+                #TCP checksum
+                # if protocol == "tcp_syn":
+                #     #according to RFC2460 Sec 8.1
+                #     tcp_checksum_data = src_ipv6 + dst_ipv6 + getByteLength(tcp_syn_header) + message_len + getByteLengh('00 00 00 06')   
+                #     tcp_checksum = ip_checksum(tcp_checksum_data)
+                #     tcp_syn = tcp_syn.replace('CC CC', tcp_checksum)
             
             # print(tot_len)
             pcap_len = tot_len + getByteLength(eth_header)
@@ -721,32 +778,13 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
                     # +----------------+
                     bytestring = pcap_init + eth_header + ipv6 + tcp_syn + message
 
-            # # for the rest, only the packets are coming, i.e., no pcap_global_header is needed
-            # else:
-            #     if gtp_teid is not None:
-            #         bytestring = pcaph + eth_header + ext_ip + ext_udp + gtp + ip + udp + message
-            #     else:
-                    # bytestring = pcaph + eth_header + ip + udp + message
-
+    
             # this function is writing out pcap file per se
             if verbose:
                 print("Packet to be written out:\n{}".format(headers[i-1]))
 
             writeByteStringToFile(bytestring, pcapfile + str(".%dbytes.pcap" % pktSize))
 
-            # we have to change back the variable fields to their original fixed value else they will not be found
-            #TODO: do a smarter replace earlier to avoid setting this back
-            # if ether_type == "ipv4":
-            #     ip = ip.replace("%04x" % ip_len, 'XX XX')
-            # else:
-            #     ipv6 = ipv6.replace("%04x" % ip_len, 'XX XX')
-            # if protocol == "udp":
-            #     udp = udp.replace("%04x" % udp_len, 'YY YY')
-            
-            # if gtp_teid is not None:
-            #     gtp = gtp.replace("%04x" % gtp_len, 'LL LL')
-            #     ext_udp = ext_udp.replace("%04x" % ext_udp_len, 'YY YY')
-            #     ext_ip = ext_ip.replace("%04x" % ext_ip_len, 'XX XX')
 
 def getRandomMAC():
     return "1a" + str("%0.10X" % random.randint(1,0xffffffffff))
@@ -902,7 +940,7 @@ if __name__ == '__main__':
                         help="Specify default TTL if it is not present "
                              "in the input.csv. Default: 10",
                         required=False,
-                        default=["10"])
+                        default=["64"])
 
     parser.add_argument('-g', '--src-port', nargs=1, dest="src_port",
                         help="Specify default source port if it is not present "
