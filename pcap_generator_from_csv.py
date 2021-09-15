@@ -629,6 +629,7 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
                 
 
             elif protocol == "tcp_syn":
+                # print("tcp header length: {}".format(getByteLength(tcp_syn_header)))
                 ip_len = message_len + getByteLength(tcp_syn_header) #add tcp syn length + payload to ip len
                 #we don't use TCP protocol length as it is in the TCP header, but will use this info in the IP length and PCAP length later on
                 
@@ -649,22 +650,35 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
                 tot_len = ip_len
                 
                 #UDP checksum calculation
-                if protocol == "udp": # we need all headers for this, hence we have this statement here
-                    #TODO: checksum calculation is wrong
-                    udp_checksum = ip_checksum(udp.replace('CC CC', '00 00') + ip + message)
+                if protocol == "udp": 
+                    #+-----------------------+
+                    #|  UDPv4 CHECKSUM CALC  |
+                    #+-----------------------+
+                    udp_checksum = ip_checksum(
+                                                src_ip + #src ip
+                                                dst_ip + #dst ip
+                                                '00 11' + #8w0 + protocol
+                                                str("%04x" % udp_len) + #udp length in 16 bit                                
+                                                udp.replace('CC CC', '') + #udp header without checksum, so we remove it from the header when calculating it, replacing it with 00 00 would work, too
+                                                message
+                                            )
                     udp = udp.replace('CC CC', "%04x" % udp_checksum)
 
                 #TCP checksum calculation
                 if protocol == "tcp_syn":
-                    message_len_16bit= "%04x" % message_len
-                    
-                    #TODO: checksum calculation is wrong
-                    print(message_len, message_len_16bit)
-                    tcp_len_new = ip_len - getByteLength(tcp_syn)
-                    tcp_checksum = ip_checksum(src_ip + dst_ip + '06' + "%02x" % tcp_len_new + tcp_syn + message)
-                    print(tcp_checksum)
+                    #+-----------------------+
+                    #|  TCPv4 CHECKSUM CALC  |
+                    #+-----------------------+
+                    tcp_checksum = (ip_checksum(
+                                                src_ip  + #src IP
+                                                dst_ip  + #dst IP 
+                                                '00 06' + #8w0 + protocol
+                                                str("%04x" % (tot_len - getByteLength(ip_header))) + #tcp header+data length -> ip_total_length - ip_header_length
+                                                tcp_syn.replace('CC CC','') + #tcp header without the checksum, so we remove it from the header when calculating it, replacing it with 00 00 would work, too
+                                                message
+                                                )
+                                    )
                     tcp_syn = tcp_syn.replace('CC CC', "%04x" % tcp_checksum)
-                    print(tcp_syn)
                 # encapsulation (external header) #TODO: FIX GTP
                 if gtp_teid is not None: # GTP is only supported for IPv4 and UDP packets
                     gtp_len = ip_len
@@ -701,16 +715,35 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
                 tot_len = ip_len
 
                 #UDP checksum calculation
-                if protocol == "udp": # we need all headers for this, hence we have this statement here
-                    udp_checksum = ip_checksum(udp.replace('CC CC', '00 00') + ipv6 + message)
+                if protocol == "udp": 
+                    #+-----------------------+
+                    #|  UDPv6 CHECKSUM CALC  |
+                    #+-----------------------+
+                    udp_checksum = ip_checksum(
+                                                src_ipv6 + #src ipv6
+                                                dst_ipv6 + #dst ipv6
+                                                str("%08x" % udp_len) + #udp length in 16 bit     
+                                                '00 00 00 11' + #24w0 + protocol/next header
+                                                udp.replace('CC CC', '') + #udp header without checksum, so we remove it from the header when calculating it (replacing it with 00 00 would work, too)
+                                                message
+                                            )
                     udp = udp.replace('CC CC', "%04x" % udp_checksum)
 
-                #TCP checksum
-                # if protocol == "tcp_syn":
-                #     #according to RFC2460 Sec 8.1
-                #     tcp_checksum_data = src_ipv6 + dst_ipv6 + getByteLength(tcp_syn_header) + message_len + getByteLengh('00 00 00 06')   
-                #     tcp_checksum = ip_checksum(tcp_checksum_data)
-                #     tcp_syn = tcp_syn.replace('CC CC', tcp_checksum)
+                #TCP checksum calculation
+                if protocol == "tcp_syn":
+                    #+-----------------------+
+                    #|  TCPv4 CHECKSUM CALC  |
+                    #+-----------------------+
+                    tcp_checksum = (ip_checksum(
+                                                src_ipv6  + #src IPv6
+                                                dst_ipv6  + #dst IPv6
+                                                str("%08x" % (tot_len - getByteLength(ipv6_header))) + #tcp header+data length -> ip_total_length - ip_header_length                                                 
+                                                '00 00 00 06' + #24w0 + protocol/next header
+                                                tcp_syn.replace('CC CC','') + #tcp header without the checksum, so we remove it from the header when calculating it, replacing it with 00 00 would work, too
+                                                message
+                                                )
+                                    )
+                    tcp_syn = tcp_syn.replace('CC CC', "%04x" % tcp_checksum)
             
             # print(tot_len)
             pcap_len = tot_len + getByteLength(eth_header)
@@ -842,6 +875,7 @@ def splitN(str1, n):
 
 # Calculates and returns the IP checksum based on the given IP Header
 def ip_checksum(iph):
+    # print("---- CHECKSUM CALC ----")
     # print(iph)
     # split into bytes
     words = splitN(''.join(iph.split()), 4)
