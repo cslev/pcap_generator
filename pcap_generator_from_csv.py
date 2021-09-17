@@ -148,18 +148,18 @@ tcp_syn_header= ('ZZ ZZ' # Source port - will be replaced later
                  'XX XX' # Destination port - will be replaced later
                  'NN NN NN NN' # SEQ number - will be replaced later
                  '00 00 00 00' # ACK number - set to 0 as being SYN packet
-                 'L' # header length - could be calculated later (in 32-bit words) but we already know this --> 6 (24 bytes) - 6*4B
+                 'L' # header length - calculated later (in 32-bit words) 
                  '00' # reserved (3bit), nonce (1bit), flags (CWR,ECE,URG,ACK) (4bit)
                  '2' # flags (4bit) (ACK,PSH,SYN,FIN -> hex(0b0010) -> 2)  - it's set to 2 to indicate SYN packet
                  '20 00' # window - set randomly
                  'CC CC' # checksum - will be replaced later
                  '00 00' # urgent pointer - 00 00 by default
                  '02 04 05 78' #TCP option - Max Segment Size - set to 1400 bytes
-            ### IF YOU WANT MORE TCP OPTIONS HERE, DON'T FORGET TO UPDATE THE HEADER LENGTH VALUE ABOVE!!! ####
-            #     '04 02' # TCP option - SACK permitted
-            #     '08 0A TT TT TT TT 00 00 00 00' # TCP option timestamp - 08 timestamp, 0a (length - 10), TT... timestamp, 00... timestamp echo reply=0 by default
-            #     '01' #TCP option - No-Operation
-            #     '03 03 07' #TCP window scale (03), length (03), set multiplier to 7 (multiply by 128)' 
+            ### IF YOU WANT MORE TCP OPTIONS HERE, DO IT BELOW ####
+                '04 02' # TCP option - SACK permitted
+                '08 0A TT TT TT TT 00 00 00 00' # TCP option timestamp - 08 timestamp, 0a (length - 10), TT... timestamp, 00... timestamp echo reply=0 by default
+                '01' #TCP option - No-Operation
+                '03 03 07' #TCP window scale (03), length (03), set multiplier to 7 (multiply by 128)' 
 )
 
 udp_header = ('ZZ ZZ'  # Source port - will be replaced later
@@ -209,26 +209,6 @@ def getByteLength(str1):
     return int(len(''.join(str1.split())) / 2)
 
 
-# # raw_input returns the empty string for "enter"
-# yes = {'yes','y', 'ye', ''}
-# no = {'no','n'}
-#
-# def confirm(**args):
-#     '''
-#     This function asks for confirmation? To specify the question, **args are defined
-#     :param args: with_something=with something, do=do, e.g.,  Do you really want to overwrite test.pcap
-#     :return:
-#     '''
-#     print "Do you really want to "+ args.get('do',"do something") + args.get('with_something') + '? (yes/no,y/n) [Default: Yes]'
-#     choice = raw_input().lower()
-#     print choice
-#     if choice in yes:
-#         return True
-#     elif choice in no:
-#         return False
-#     else:
-#         print("Please respond with 'yes/y' or 'no/n'")
-#         exit(-1)
 
 first_byte_to_write = True
 
@@ -265,8 +245,14 @@ def rawcount(filename):
 def calculateRemainingPercentage(message, current, n):
     percent = str(message + ": %d%%" % (int((current / float(n)) * 100)))
     if(current < n):
+        #coloring - does not seem to work, though
+        percent.replace(": ", str(": {}".format(orange)) )
+        
         print(percent, end="\r")
     else:
+        #coloring - does not seem to work, though
+        percent.replace(": ", str(": {}{}".format(bold,green)) ) 
+        
         print(percent, end="")
         print("\t{}{}[DONE]{}".format(bold,green,none))
 
@@ -313,7 +299,8 @@ def readFile(input):
                             'ether_type':"",
                             'src_ipv6':"",
                             'dst_ipv6':"",
-                            'protocol':""
+                            'protocol':"",
+                            'payload_needed':""
                             # NOTE: add more header fields here
                     }
                     for i in one_line:
@@ -335,6 +322,14 @@ def readFile(input):
                                         header[h] = parseIP(header_row[1])
                                     elif h.endswith('ipv6'):
                                         header[h] = parseIPv6(header_row[1])
+                                    elif h.endswith('payload_needed'):
+                                        if (header_row[1].lower() == "false"): #we only have to handle false, rest are true by default
+                                            header[h] = False
+                                        elif (header_row[1].lower() == "true"): #any string converted to bool is considered as True
+                                            header[h] = True
+                                        else:
+                                            print("payload_needed cannot be parsed properly -> reverting to default True")
+                                            header[h] = True
                                     
                                     #TODO: below could be OR-ed together, but easier to follow this way
                                     #we basically do some quick conversion here, whether we need values as Int or String
@@ -397,6 +392,10 @@ def readFile(input):
 
             if hh == 'dst_ipv6' and h[hh] =="":
                 h[hh]=parseIPv6(default_dst_ipv6)
+
+            if hh == 'payload_needed' and h[hh] =="":
+                h[hh]=True
+
             
             #NOTE: Add here new header type
 
@@ -411,6 +410,7 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
     :param pcapfile: pcap output file
     :param kwargs:
         packet_sizes = list of packetsizes required
+        payload_needed = default payload_needed 
         src_mac = default src_mac
         dst_mac = default dst_mac
         src_ip = default src_ip
@@ -478,6 +478,12 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
 
         # set here the header variables
         timestamp = headers[i-1]['timestamp']
+        #Get/calculate timestamp
+        if timestamp is None: #timestamp was not set, use current time
+            time = createTimestamp()
+        else:
+            time = createTimestamp(time=timestamp)
+        #recall, time is a tuple (sec, usec)
 
         #L2 addresses
         src_mac = headers[i-1]['src_mac']
@@ -485,8 +491,6 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
         
         #L2 vlan
         vlan = headers[i-1]['vlan']
-
-
 
         #L3 - IPv4 addresses + TTL
         src_ip = headers[i-1]['src_ip']
@@ -502,6 +506,12 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
         sport = headers[i-1]['src_port']
         dport = headers[i-1]['dst_port']
         protocol = headers[i-1]['protocol']
+
+        #PAYLOAD NEEDED?
+        payload_needed = headers[i-1]['payload_needed']
+
+        #Let's keep track of the full header size to later generate padding if needed w.r.t. the required packet size
+        full_header_length = 0
 
         #ETHER_TYPE
         ether_type = headers[i-1]['ether_type']
@@ -528,7 +538,10 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
                          eth_type # append ether_type to indicate ipv4/6 - #TODO: not sure about VLAN + IPv6
             # update vlan header
             eth_header = eth_header.replace('0V VV', "0%03x" % vlan)
-
+        
+        #update full header length
+        full_header_length += getByteLength(eth_header)
+        
         # +----------------+
         # |   IPv4 packet  |
         # +----------------+
@@ -540,7 +553,8 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
             if gtp_teid is not None:
                 gtp = gtp_header
                 gtp = gtp.replace('TE ID TE ID', "%08x" % gtp_teid)
-
+                #update full header length
+                full_header_length += getByteLength(gtp)
                 # generate the external headers
                 gtp_dport = 2152
                 gtp_sport = 2152
@@ -551,6 +565,8 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
                 ext_ip = ext_ip.replace('DD DD DD DD', ext_dst_ip)
                 ext_ip = ext_ip.replace('TT',"%02x" % ttl)
                 ext_ip = ext_ip.replace('PP', '11')
+                #update full header length
+                full_header_length += getByteLength(ext_ip)
             # +-------------------------+
             # |   IPv4 header assembly  |
             # +-------------------------+
@@ -564,10 +580,12 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
             ip = ip.replace('TT', "%02x" % ttl)
             #update protocol
             if protocol == "udp":
-                ip = ip.replace('PP', '11')
+                ip = ip.replace('PP', '11') #17 for UDP
             else:
-                ip = ip.replace('PP', '06')
-            # print (ip)
+                ip = ip.replace('PP', '06') #6 for TCP
+
+            #update full header length
+            full_header_length += getByteLength(ip)
 
         # +----------------+
         # |   IPv6 packet  |
@@ -586,6 +604,9 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
                 ipv6 = ipv6.replace('PP', '06')
             #ipv6.replace('XX XX', header_length)
 
+            #update full header length
+            full_header_length += getByteLength(ipv6)
+
         # +----------------+
         # |   UDP proto    |
         # +----------------+
@@ -594,6 +615,8 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
             udp = udp_header.replace('XX XX', "%04x" % dport)
             udp = udp.replace('ZZ ZZ', "%04x" % sport)
 
+            #update full header length
+            full_header_length += getByteLength(udp)
        
         # +----------------+
         # | TCP_SYN proto  |
@@ -602,22 +625,34 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
             tcp_syn = tcp_syn_header.replace('XX XX', "%04x" % dport)
             tcp_syn = tcp_syn.replace('ZZ ZZ', "%04x" % sport)
             tcp_syn = tcp_syn.replace('NN NN NN NN', "%08x" % random.randint(1,65535))
-            tcp_syn_len = int(getByteLength(tcp_syn) / 4) #tcp_syn_length requires length in the number of 32-bit words, hence we divide by 4
-            # print(ipv6)
-            # print(tcp_syn)
-            # print(tcp_syn_len)
+
+            #tcp_syn_length requires length in the number of 32-bit words, hence we divide by 4
+            tcp_syn_len = int(getByteLength(tcp_syn) / 4) 
             tcp_syn = tcp_syn.replace('L', "%01x" % tcp_syn_len)
-            # print(tcp_syn)
             
+            #timestamp in the TCP header - we use our time tuple, which is (sec, usec)
+            #we only need sec here, no usec
+            tcp_syn = tcp_syn.replace('TT TT TT TT', time[0])
             # tcp_syn = tcp_syn.replace('CC CC', checksum)
+
+            #update full header length
+            full_header_length += getByteLength(tcp_syn)
         
         #TODO: else other protocols/subprotocols, e.g., TCP SYN-ACK, TCP ACK
 
         # create packets with the different packet sizes but with the same 5-tuple
         for pktSize in packet_sizes:
-            # generate the packet payload (random)
-            message = getMessage(pktSize)
+
+            #TODO: would make more sense to not have the for loop at all if no payload is needed
+            # but would require too much of refactoring :(
+            if payload_needed:
+                # generate the packet payload (random) w.r.t. the full_header_length kept track on before
+                message = getMessage(pktSize, full_header_length)
+            else:
+                message = ''
+
             message_len = getByteLength(message)
+            
 
             ip_len = 0 #initialize IP length with 0
             #### ONCE we get the packet payload, we can calculate payload length, protocol length, checksum, etc. ####
@@ -753,11 +788,7 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
             pcaph = pcap_packet_header.replace('XX XX XX XX', reverse_hex_str)
             pcaph = pcaph.replace('YY YY YY YY', reverse_hex_str)
 
-            #adding timestamp
-            if timestamp is None: #timestamp was not set, use current time
-              time = createTimestamp()
-            else:
-              time = createTimestamp(time=timestamp)
+            #using the timestamp values stored in time, we append it to the PCAP header
             pcaph = pcaph.replace('T1 T1 T1 T1', time[0]) # time[0] is seonds
             pcaph = pcaph.replace('T2 T2 T2 T2', time[1]) # time[1] is useonds
 
@@ -889,9 +920,24 @@ def ip_checksum(iph):
 
     return csum
 
-def getMessage(packetsize):
+
+def getMessage(packetsize, header_length):
+    '''
+    This function creates random message to pad the packet as payload w.r.t. the header_length and the required packet size
+    If header size is already bigger than the required packetsize, null-char is returned as message
+    For instance, if packet size is 64B and protocol is TCP, then no message will be appended as TCP header already makes the packet size to go beyond 64
+    @params
+    int packetsize = required final packet size
+    int header_length = the size of the already used headers
+    '''
     message = ''
-    for i in range(0, int(packetsize) - 46):  # 46 = eth + ip + udp header
+    header_length = header_length + 4 #we have to calculate with the checksum appended by the interface itself when sent out (offloaded to the hardware on modern systems)
+    #check if header_length is already enough for the required packet size
+    if header_length > packetsize:
+        return message
+
+    #otherwise fill the message with random numbers as HEX chars
+    for i in range(0, int(packetsize) - header_length):  
         message += "%0.2X " % random.randint(0, 255)
 
     return message
@@ -943,6 +989,13 @@ if __name__ == '__main__':
                         "such as 64,112,42. Default: 64",
                         required=False,
                         default=['64'])
+    
+    parser.add_argument('-P','--payload-needed', action='store_true', dest='payload_needed',
+                        help="Specifiy if you want the packets to be padded to the packetsize at all! "
+                        "For instance, if you want normal TCP SYN, you don't need payload - " 
+                        "although, using TCP protocol already makes your packet bigger than the min. of 64B",
+                        required=False)
+
     parser.add_argument('-a','--src-mac',nargs=1, dest="src_mac",
                         help="Specify default source MAC address if it is not present "
                         "in the input.csv. Default: 00:00:00:00:00:01",
@@ -1018,11 +1071,14 @@ if __name__ == '__main__':
                         required=False,
                         default=['udp']
                         )
+    parser.add_argument('-v','--verbose', action='store_true', required=False, dest='verbose',
+                        help="Enabling verbose mode")
+
     # NOTE: Add more parsable arguments here if needed
 
-    parser.add_argument('-v','--verbose', action='store_true', required=False, dest='verbose',
-    help="Enabling verbose mode")
     parser.set_defaults(verbose=False)
+    parser.set_defaults(payload_needed=True)
+    
 
     args = parser.parse_args()
 
@@ -1032,6 +1088,7 @@ if __name__ == '__main__':
     
     output = args.output[0]
     packet_sizes = (args.packetsizes[0]).split(',')
+    payload_needed = args.payload_needed
     src_mac = args.src_mac[0]
     dst_mac = args.dst_mac[0]
     src_ip = args.src_ip[0]
@@ -1065,7 +1122,8 @@ if __name__ == '__main__':
     print("{}Input file:            {}{}{}".format(bold,green,input,none))
     print("{}Output file:           {}{}{}".format(bold,green,output,none))
     print("{}Packetsizes:           {}{}{}".format(bold,green,packet_sizes,none))
-    print("{}Ether type:            {}{}{}".format(bold,green,ether_type,none))
+    print("{}PAYLOAD needed:        {}{}{}".format(bold,green,payload_needed,none))
+    print("{}Eth_type if undefined: {}{}{}".format(bold,green,ether_type,none))
     print("{}SRC MAC if undefined:  {}{}{}".format(bold,green,src_mac,none))
     print("{}DST MAC if undefined:  {}{}{}".format(bold,green,dst_mac,none))
     print("{}SRC IP if undefined:   {}{}{}".format(bold,green,src_ip,none))
@@ -1094,6 +1152,7 @@ if __name__ == '__main__':
                             input,
                             output,
                             packet_sizes=packet_sizes,
+                            payload_needed=payload_needed,
                             src_mac=src_mac,
                             dst_mac=dst_mac,
                             src_ip=src_ip,
