@@ -108,11 +108,12 @@ Your PCAP files will be 'output.64bytes.pcap', 'output.128bytes.pcap', and 'outp
 **NOTE**: if you set `payload_needed=false` for some specific packets, they won't be padded to the requested packet size obviously.
 
 ## WARNING
-THE SCRIPT IS NOT BULLET-PROOF! 
+**THE SCRIPT IS NOT BULLET-PROOF!**
 
 PAY ATTENTION TO YOUR HEADER DATA
 
-For instance, supply IPv4 addresses when ether_type=0x0800 and IPv6 addresses when ether_type=0x86dd and vice versa!
+For instance, supply IPv4 addresses when *ether_type=ipv4*, and IPv6 addresses when *ether_type=ipv6* and vice versa!
+Otherwise, you might end up using default values or run into errors!
 
 ## GTP feature 
 Thanks to @egerpon for adding GTP feature
