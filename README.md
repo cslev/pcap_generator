@@ -36,7 +36,7 @@ So, if you omit it works as before and uses the packet size as an indicator.
 Otherwise, you can set for some packets to not generate a payload. For instance, you might generate different types of packets with 128B packet size, but you don't want the TCP_SYN packets to have a payload at all. Then, you can disable it by adding `payload_needed=false` to the particular line in your .csv file.
 
 ## Requirements
- - Python
+ - Python 3
  
 ## Quick walkthrough
 ###### First, download the source
@@ -52,7 +52,7 @@ $ python pcap_generator_from_csv.py -i YOUR_INPUT.CSV -o YOUR_DESIRED_PCAPFILENA
 
 ###### For additional arguments, see help
 ```
-$ python pcap_generator_from_csv.py -h
+$ python3 pcap_generator_from_csv.py -h
 
 usage: pcap_generator_from_csv.py [-h] -i INPUT -o OUTPUT [-p PACKETSIZES] [-P] [-a SRC_MAC] [-b DST_MAC] [-c VLAN] [-d SRC_IP] [-e DST_IP] [-f TTL] [-g SRC_PORT] [-j DST_PORT] [-k GTP_TEID] [-l TIMESTAMP]
                                   [-m ETHER_TYPE] [-n SRC_IPV6] [-u DST_IPV6] [-w PROTOCOL] [-v]
@@ -101,7 +101,7 @@ optional arguments:
 ## Example
 In order to create a PCAP from CSV file called 'input.csv', desired output file called 'output.pcap' with packet sizes of 64,128, and 512 assuming that if there is no VLAN header specified in the CSV file for a given header then apply VLAN tag: 505, the following command will do the job:
 ```
-$ python pcap_generator_from_csv.py -i input.csv -o output -p 64,128,512 --vlan 505
+$ python3 pcap_generator_from_csv.py -i input.csv -o output -p 64,128,512 --vlan 505
 ```
 Your PCAP files will be 'output.64bytes.pcap', 'output.128bytes.pcap', and 'output.512bytes.pcap' all consisting of the same header fields but in different packet sizes.
 
