@@ -10,7 +10,7 @@ src_mac=20:00:00:00:00:01,dst_mac=20:00:00:00:00:02, vlan=1000
 src_mac=00:00:00:00:00:01,dst_mac=00:00:00:00:00:02, src_ip=10.0.0.1, dst_ip=10.0.0.2, dst_port=22
 src_mac=00:00:00:00:00:01,dst_mac=00:00:00:00:00:02, src_ip=10.0.0.1, dst_ip=10.0.0.2, src_port=12312, dst_port=514, ether_type=ipv4, protocol=tcp_syn
 #ext_src_ip=192.168.1.20, ext_dst_ip=192.168.1.1, gtp=255, src_ip=10.0.0.1, dst_ip=10.0.0.2, src_port=2048, dst_port=4096
-src_mac=00:00:00:00:00:01,dst_mac=00:00:00:00:00:02, src_ipv6=2603:abba:abba:acdc:dead:beef:dead:beef, dst_ipv6=2400:abba:edda:acdc:dbf3:52a8:2cb7:b38e, src_port=11771, dst_port=123,ether_type=ipv6,protocol=tcp_syn
+src_mac=00:00:00:00:00:01,dst_mac=00:00:00:00:00:02, src_ipv6=2603:abba:abba:acdc:dead:beef:dead:beef, dst_ipv6=2400:abba:edda:acdc:dbf3:52a8:2cb7:b38e, src_port=11771, dst_port=123,ether_type=ipv6,protocol=tcp_syn,payload_needed=false
 src_mac=00:00:00:00:00:01,dst_mac=00:00:00:00:00:02, src_ipv6=2603:abba:abba:acdc:dead:beef:dead:beef, dst_ipv6=2400:abba:edda:acdc:dbf3:52a8:2cb7:b38e,dst_port=534,ether_type=ipv6,protocol=udp
 
 ```
