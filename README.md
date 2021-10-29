@@ -47,7 +47,7 @@ $ cd pcap_generator
 
 ###### Create your own CSV file, then execute the following command:
 ```
-$ python pcap_generator_from_csv.py -i YOUR_INPUT.CSV -o YOUR_DESIRED_PCAPFILENAME
+$ python3 pcap_generator_from_csv.py -i YOUR_INPUT.CSV -o YOUR_DESIRED_PCAPFILENAME
 ```
 
 ###### For additional arguments, see help
