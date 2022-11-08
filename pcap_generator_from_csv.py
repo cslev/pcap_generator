@@ -1015,7 +1015,7 @@ if __name__ == '__main__':
                              "For syntax, see input.csv.example!",
                         required=False)
     parser.add_argument('-R','--generate-random', dest="generate_random", action='store_true',
-                        help="Indicate if you would like to generate random packets instead. "
+                        help="Indicate if you would like to generate random packets instead. ",
                         required=False)
     parser.add_argument('-o','--output',nargs=1, dest="output",
                         help="Specify the output PCAP file's basename! "
