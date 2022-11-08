@@ -10,6 +10,8 @@ import time
 import re
 import os #for playing around with set input path
 
+from tqdm import tqdm
+
 # ----- ===== Configurable parameteres ==== ----
 # DO NOT TOUCH OTHER VARIABLES
 # default necessary values if there is nothing provided
@@ -409,7 +411,7 @@ def generateRandomHeaders(num_packets):
     :return: the generated headers in a list
     '''
     headers = []
-    for i in num_packets:
+    for i in tqdm(range(num_packets)):
         header = {
             'timestamp': default_timestamp,
             'src_mac': getRandomMAC(),
