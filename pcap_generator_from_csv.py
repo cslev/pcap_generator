@@ -402,8 +402,40 @@ def readFile(input):
 
     return headers
 
+def generateRandomHeaders(num_packets):
+    '''
+    This function generates random packets, as an alternative to reading from a csv file.
+    :param num_packets: number of packets to generate
+    :return: the generated headers in a list
+    '''
+    headers = []
+    for i in num_packets:
+        header = {
+            'timestamp': default_timestamp,
+            'src_mac': getRandomMAC(),
+            'dst_mac': getRandomMAC(),
+            'src_ip': getRandomIP(),
+            'dst_ip': getRandomIP(),
+            'src_port': default_src_port,
+            'dst_port': default_dst_port,
+            'gtp': None,
+            'ext_src_ip':"",
+            'ext_dst_ip':"",
+            'vlan': default_vlan,
+            'ttl': default_ttl,
+            'ether_type': "ipv4",
+            'src_ipv6': parseIPv6(default_src_ipv6),
+            'dst_ipv6': parseIPv6(default_dst_ipv6),
+            'protocol': default_protocol,
+            'payload_needed': True
+        }
 
-def generateTraceFromFile(inputfile, pcapfile, **kwargs):
+        headers.append(header)
+
+    return headers
+
+
+def generateTraceFromFile(inputfile, generate_random, pcapfile, **kwargs):
     '''
     This function will read the input file and creates a pcap from its content
     :param inputfile: input file to read
@@ -467,7 +499,10 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
         packet_sizes.append(int(i))
 
     ## Parse the headers present in the file
-    headers=readFile(inputfile)
+    if generate_random:
+        headers=generateRandomHeaders(100)
+    else:        
+        headers=readFile(inputfile)
     n=len(headers)
 
     print("\n### PCAP GENERATION ###")
@@ -978,7 +1013,10 @@ if __name__ == '__main__':
     parser.add_argument('-i','--input',nargs=1, dest="input",
                         help="Specify the name of the input CSV file. "
                              "For syntax, see input.csv.example!",
-                        required=True)
+                        required=False)
+    parser.add_argument('-R','--generate-random', dest="generate_random", action='store_true',
+                        help="Indicate if you would like to generate random packets instead. "
+                        required=False)
     parser.add_argument('-o','--output',nargs=1, dest="output",
                         help="Specify the output PCAP file's basename! "
                              "Output will be [output].[PACKETSIZE]bytes.pcap extension is not needed!",
@@ -1085,6 +1123,8 @@ if __name__ == '__main__':
     input = args.input[0]
     #handle Windows path
     input = os.path.normpath(input)
+
+    generate_random = args.generate_random
     
     output = args.output[0]
     packet_sizes = (args.packetsizes[0]).split(',')
@@ -1150,6 +1190,7 @@ if __name__ == '__main__':
 
     generateTraceFromFile(
                             input,
+                            generate_random,
                             output,
                             packet_sizes=packet_sizes,
                             payload_needed=payload_needed,
