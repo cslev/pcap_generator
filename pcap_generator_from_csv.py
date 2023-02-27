@@ -1015,7 +1015,8 @@ if __name__ == '__main__':
     parser.add_argument('-i','--input',nargs=1, dest="input",
                         help="Specify the name of the input CSV file. "
                              "For syntax, see input.csv.example!",
-                        required=False)
+                        required=False,
+                        default=None)
     parser.add_argument('-R','--generate-random', dest="generate_random", action='store_true',
                         help="Indicate if you would like to generate random packets instead. ",
                         required=False)
@@ -1122,11 +1123,11 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    input = args.input[0]
-    #handle Windows path
-    input = os.path.normpath(input)
-
     generate_random = args.generate_random
+    if not generate_random:
+        input = args.input[0]
+        #handle Windows path
+        input = os.path.normpath(input)
     
     output = args.output[0]
     packet_sizes = (args.packetsizes[0]).split(',')
