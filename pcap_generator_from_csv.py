@@ -1004,6 +1004,10 @@ def showHelp():
     print("Default packet size is 64-byte! It is defined as a list in the source code! " \
           "Extend it if necessary!\n")
     print("{}WARNING: THE SCRIPT IS NOT BULLET-PROOF! \nPAY ATTENTION TO YOUR HEADER DATA\n For instance, supply IPv4 addresses when ether_type=0x0800 and IPv6 addresses when ether_type=0x86dd and vice versa!{}\n",red,none)
+    print("")
+    print("{}Alternatively, you may wish to generate random packets.{}".format(yellow,none))
+    print("{}usage: pcap_generator_from_csv.py --generate-random <number_of_packets> -o <desired_output_pcapfile_prefix>{}".format(bold,none))
+    print('Example: ./pcap_generator_from_csv.py --generate-random 128 -o output')
     exit(0)
 
 
@@ -1018,8 +1022,9 @@ if __name__ == '__main__':
                         required=False,
                         default=None)
     parser.add_argument('-R','--generate-random',nargs=1, dest="generate_random",
-                        help="Indicate if you would like to generate random packets instead. ",
-                        required=False)
+                        help="Generate a certain number of random packets instead of giving a CSV file input. If specified, input CSV file is ignored.",
+                        required=False,
+                        default=['64'])
     parser.add_argument('-o','--output',nargs=1, dest="output",
                         help="Specify the output PCAP file's basename! "
                              "Output will be [output].[PACKETSIZE]bytes.pcap extension is not needed!",
