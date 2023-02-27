@@ -402,12 +402,9 @@ def readFile(input):
 
     return headers
 
-
-def generateTraceFromFile(inputfile, pcapfile, **kwargs):
+def setDefaults(**kwargs):
     '''
-    This function will read the input file and creates a pcap from its content
-    :param inputfile: input file to read
-    :param pcapfile: pcap output file
+    This function will set default headers.
     :param kwargs:
         packet_sizes = list of packetsizes required
         payload_needed = default payload_needed 
@@ -466,8 +463,47 @@ def generateTraceFromFile(inputfile, pcapfile, **kwargs):
     for i in ps:
         packet_sizes.append(int(i))
 
-    ## Parse the headers present in the file
-    headers=readFile(inputfile)
+def generateRandomHeaders(num_packets):
+    '''
+    This function generates random packets, as an alternative to reading from a csv file.
+    :param num_packets: number of packets to generate
+    :return: the generated headers in a list
+    '''
+    headers = []
+    for i in range(num_packets):
+        calculateRemainingPercentage("|-- Generating random headers", i, num_packets-1)
+        header = {
+            'timestamp': default_timestamp,
+            'src_mac': getRandomMAC(),
+            'dst_mac': getRandomMAC(),
+            'src_ip': getRandomIP(),
+            'dst_ip': getRandomIP(),
+            'src_port': default_src_port,
+            'dst_port': default_dst_port,
+            'gtp': None,
+            'ext_src_ip':"",
+            'ext_dst_ip':"",
+            'vlan': default_vlan,
+            'ttl': default_ttl,
+            'ether_type': "ipv4",
+            'src_ipv6': parseIPv6(default_src_ipv6),
+            'dst_ipv6': parseIPv6(default_dst_ipv6),
+            'protocol': default_protocol,
+            'payload_needed': True
+        }
+
+        headers.append(header)
+
+    return headers
+
+def generateFromHeaders(headers, pcapfile, **kwargs):
+    '''
+    This function will read the input file and creates a pcap from its content
+    :param inputfile: input file to read
+    :param pcapfile: pcap output file
+    :return: None
+    '''
+
     n=len(headers)
 
     print("\n### PCAP GENERATION ###")
@@ -967,6 +1003,10 @@ def showHelp():
     print("Default packet size is 64-byte! It is defined as a list in the source code! " \
           "Extend it if necessary!\n")
     print("{}WARNING: THE SCRIPT IS NOT BULLET-PROOF! \nPAY ATTENTION TO YOUR HEADER DATA\n For instance, supply IPv4 addresses when ether_type=0x0800 and IPv6 addresses when ether_type=0x86dd and vice versa!{}\n",red,none)
+    print("")
+    print("{}Alternatively, you may wish to generate random packets.{}".format(yellow,none))
+    print("{}usage: pcap_generator_from_csv.py --generate-random <number_of_packets> -o <desired_output_pcapfile_prefix>{}".format(bold,none))
+    print('Example: ./pcap_generator_from_csv.py --generate-random 128 -o output')
     exit(0)
 
 
@@ -978,7 +1018,12 @@ if __name__ == '__main__':
     parser.add_argument('-i','--input',nargs=1, dest="input",
                         help="Specify the name of the input CSV file. "
                              "For syntax, see input.csv.example!",
-                        required=True)
+                        required=False,
+                        default=None)
+    parser.add_argument('-R','--generate-random',nargs=1, dest="generate_random",
+                        help="Generate a certain number of random packets instead of giving a CSV file input. If specified, input CSV file is ignored.",
+                        required=False,
+                        default=['64'])
     parser.add_argument('-o','--output',nargs=1, dest="output",
                         help="Specify the output PCAP file's basename! "
                              "Output will be [output].[PACKETSIZE]bytes.pcap extension is not needed!",
@@ -1082,9 +1127,11 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    input = args.input[0]
-    #handle Windows path
-    input = os.path.normpath(input)
+    generate_random = int(args.generate_random[0])
+    if not generate_random:
+        input = args.input[0]
+        #handle Windows path
+        input = os.path.normpath(input)
     
     output = args.output[0]
     packet_sizes = (args.packetsizes[0]).split(',')
@@ -1145,28 +1192,31 @@ if __name__ == '__main__':
     for i in packet_sizes:
         open(str("{}.{}bytes.pcap".format(output,i)),'w') # delete contents
 
+    setDefaults(
+        packet_sizes=packet_sizes,
+        payload_needed=payload_needed,
+        src_mac=src_mac,
+        dst_mac=dst_mac,
+        src_ip=src_ip,
+        dst_ip=dst_ip,
+        src_port=src_port,
+        dst_port=dst_port,
+        vlan=vlan,
+        verbose=verbose,
+        gtp_teid=gtp_teid,
+        timestamp=timestamp,
+        ttl=ttl,
+        ether_type=ether_type,
+        protocol=protocol,
+        src_ipv6=src_ipv6,
+        dst_ipv6=dst_ipv6
+        # NOTE: add here extra header to be configured from input
+    )
 
+    print(generate_random)
+    if generate_random != 0:
+        headers = generateRandomHeaders(generate_random)
+    else:
+        headers = readFile(inputfile)
 
-
-    generateTraceFromFile(
-                            input,
-                            output,
-                            packet_sizes=packet_sizes,
-                            payload_needed=payload_needed,
-                            src_mac=src_mac,
-                            dst_mac=dst_mac,
-                            src_ip=src_ip,
-                            dst_ip=dst_ip,
-                            src_port=src_port,
-                            dst_port=dst_port,
-                            vlan=vlan,
-                            verbose=verbose,
-                            gtp_teid=gtp_teid,
-                            timestamp=timestamp,
-                            ttl=ttl,
-                            ether_type=ether_type,
-                            protocol=protocol,
-                            src_ipv6=src_ipv6,
-                            dst_ipv6=dst_ipv6
-                            # NOTE: add here extra header to be configured from input
-                         )
+    generateFromHeaders(headers,output)
