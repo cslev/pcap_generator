@@ -1214,9 +1214,9 @@ if __name__ == '__main__':
     )
 
     print(generate_random)
-    if generate_random != 0:
+    if generate_random != 0: # i.e., if argument -R 1
         headers = generateRandomHeaders(generate_random)
-    else:
-        headers = readFile(inputfile)
+    else: # i.e., if argument -R 0
+        headers = readFile(input)
 
     generateFromHeaders(headers,output)
