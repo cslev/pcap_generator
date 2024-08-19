@@ -270,7 +270,7 @@ def readFile(input):
         line_num = 1
         for line in lines:
             #progress status
-            calculateRemainingPercentage("|-- Parsing input .CSV file", line_num, num_lines)
+            calculateRemainingPercentage(f"|-- Parsing input file: {input}", line_num, num_lines)
             #remove blank spaces
             line = line.strip()
             #removed blank lines
@@ -1019,11 +1019,11 @@ if __name__ == '__main__':
                         help="Specify the name of the input CSV file. "
                              "For syntax, see input.csv.example!",
                         required=False,
-                        default=None)
-    parser.add_argument('-R','--generate-random',nargs=1, dest="generate_random",
+                        default=["input.csv"])
+    parser.add_argument('-R','--generate-random', nargs=1, dest="generate_random",
                         help="Generate a certain number of random packets instead of giving a CSV file input. If specified, input CSV file is ignored.",
                         required=False,
-                        default=['64'])
+                        default=[False])
     parser.add_argument('-o','--output',nargs=1, dest="output",
                         help="Specify the output PCAP file's basename! "
                              "Output will be [output].[PACKETSIZE]bytes.pcap extension is not needed!",
@@ -1033,8 +1033,7 @@ if __name__ == '__main__':
                         "In case of more than one, just create a comma separated list "
                         "such as 64,112,42. Default: 64",
                         required=False,
-                        default=['64'])
-    
+                        default=['64'])    
     parser.add_argument('-P','--payload-needed', action='store_true', dest='payload_needed',
                         help="Specifiy if you want the packets to be padded to the packetsize at all! "
                         "For instance, if you want normal TCP SYN, you don't need payload - " 
@@ -1127,12 +1126,14 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    
+
+    input = args.input[0]
     generate_random = int(args.generate_random[0])
-    if not generate_random:
-        input = args.input[0]
+    if generate_random != 0:        
         #handle Windows path
         input = os.path.normpath(input)
-    
+
     output = args.output[0]
     packet_sizes = (args.packetsizes[0]).split(',')
     payload_needed = args.payload_needed
@@ -1217,6 +1218,6 @@ if __name__ == '__main__':
     if generate_random != 0:
         headers = generateRandomHeaders(generate_random)
     else:
-        headers = readFile(inputfile)
+        headers = readFile(input)
 
     generateFromHeaders(headers,output)
