@@ -1021,7 +1021,7 @@ if __name__ == '__main__':
                         required=False,
                         default=["input.csv"])
     parser.add_argument('-R','--generate-random', nargs=1, dest="generate_random",
-                        help="Generate a certain number of random packets instead of giving a CSV file input. If specified, input CSV file is ignored.",
+                        help="Generate a certain number of random packets (provided as the param of this) instead of giving a CSV file input. If specified, input CSV file is ignored.",
                         required=False,
                         default=[False])
     parser.add_argument('-o','--output',nargs=1, dest="output",
