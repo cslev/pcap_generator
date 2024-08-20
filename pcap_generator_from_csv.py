@@ -1132,9 +1132,7 @@ if __name__ == '__main__':
 
     input = args.input[0]
     generate_random = int(args.generate_random[0])
-    if generate_random != 0:        
-        #handle Windows path
-        input = os.path.normpath(input)
+
 
     output = args.output[0]
     packet_sizes = (args.packetsizes[0]).split(',')
@@ -1170,6 +1168,7 @@ if __name__ == '__main__':
 
     print("{}The following arguments were set:{}".format(bold,none))
     print("{}Input file:            {}{}{}".format(bold,green,input,none))
+    print("{}Generate random?       {}{}{}".format(bold,green,generate_random,none))
     print("{}Output file:           {}{}{}".format(bold,green,output,none))
     print("{}Packetsizes:           {}{}{}".format(bold,green,packet_sizes,none))
     print("{}PAYLOAD needed:        {}{}{}".format(bold,green,payload_needed,none))
@@ -1187,6 +1186,8 @@ if __name__ == '__main__':
     print("{}SRC IPv6 if undefined: {}{}{}".format(bold,green,src_ipv6,none))
     print("{}DST IPv6 if undefined: {}{}{}".format(bold,green,dst_ipv6,none))
     print("{}Protocol if undefined: {}{}{}".format(bold,green,protocol,none))
+    
+
 
     ## NOTE: Add here more parsed input args to display
 
@@ -1216,7 +1217,7 @@ if __name__ == '__main__':
         # NOTE: add here extra header to be configured from input
     )
 
-    print(generate_random)
+    # print(generate_random)
     if generate_random != 0:
         headers = generateRandomHeaders(generate_random)
     else:
