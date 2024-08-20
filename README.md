@@ -62,7 +62,9 @@ Usage of PCAP generator from CSV file
 optional arguments:
   -h, --help            show this help message and exit
   -i INPUT, --input INPUT
-                        Specify the name of the input CSV file. For syntax, see input.csv.example!
+                        Specify the name of the input CSV file. For syntax, see input.csv.example! If not provided, the provided example file input.csv will be used by default!
+  -R GENERATE_RANDOM, --generate-random GENERATE_RANDOM
+                        Generate a certain number of random packets (provided as the param of this) instead of giving a CSV file input. If specified, input CSV file is ignored.
   -o OUTPUT, --output OUTPUT
                         Specify the output PCAP file's basename! Output will be [output].[PACKETSIZE]bytes.pcap extension is not needed!
   -p PACKETSIZES, --packetsizes PACKETSIZES
