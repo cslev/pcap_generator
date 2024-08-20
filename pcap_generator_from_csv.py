@@ -396,6 +396,9 @@ def readFile(input):
             if hh == 'payload_needed' and h[hh] =="":
                 h[hh]=True
 
+            if hh == 'ether_type' and h[hh]=="":
+                h[hh] = default_ether_type
+
             
             #NOTE: Add here new header type
 
