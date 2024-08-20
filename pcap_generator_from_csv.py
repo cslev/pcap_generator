@@ -105,14 +105,20 @@ CBLINK2 = '\33[6m'
 # CC CC - checksum
 # TT TT TT TT - timestamp
 
+#sec and microsec
+TIME_FORMAT = '4D 3C B2 A1' 
+#sec and nanosec
+# TIME_FORMAT= 'D4 C3 B2 A1'
+
 # Global header for pcap 2.4
-pcap_global_header = ('D4 C3 B2 A1'
-                      '02 00'  # File format major revision (i.e. pcap <2>.4)
-                      '04 00'  # File format minor revision (i.e. pcap 2.<4>)
-                      '00 00 00 00'
-                      '00 00 00 00'
-                      'FF FF 00 00'
-                      '01 00 00 00')
+
+pcap_global_header = ( f'{TIME_FORMAT}' #this magic number dictates if time is second+micro, or seconds+nano
+                        '02 00'  # File format major revision (i.e. pcap <2>.4)
+                        '04 00'  # File format minor revision (i.e. pcap 2.<4>)
+                        '00 00 00 00'
+                        '00 00 00 00'
+                        'FF FF 00 00'
+                        '01 00 00 00')
 
 # pcap packet header that must preface every packet
 pcap_packet_header = ('T1 T1 T1 T1'  # time in seconds (little endian)
@@ -185,24 +191,34 @@ def _reverseEndian(hexstring):
 
     return little_endian
 
-
+import struct
 def createTimestamp(**kwargs):
     # this is a timestamp in seconds.microseconds, e.g., 1570435931.7557144
-    _time = kwargs.get('time',time.time())
+    _time = kwargs.get('time', time.time())
+    reverse = kwargs.get('reverse', False)
+
     #check for float type
     if isinstance(_time,float):
         _time="%.8f" % _time # str(time) is not working well below python3 as floats become reduced to two decimals only
     #split it to seconds and microseconds
     _time=_time.split('.')
     # time is a list now
-    sec  = _time[0]
-    usec = _time[1]
+    sec  = format(int(_time[0]), '08x')
+    usec = format(int(_time[1]), '08x')
     # convert the to hex
-    sec = ("%08x" % int(sec))   # now, we have sec in hex (big endian)
-    usec = ("%08x" % int(usec)) # now, we have usec in hex (big endian)
+    # sec = ("%08x" % int(sec))   # now, we have sec in hex (big endian)
+    # usec = ("%08x" % int(usec)) # now, we have usec in hex (big endian)
 
-    sec  = _reverseEndian(sec)
-    usec = _reverseEndian(usec)
+    # little_endian_hex = (struct.pack('<f', sec).hex(),struct.pack('<f', usec).hex())
+    
+    if(reverse):
+        # big_endian_hex = (struct.pack('>f', sec).hex(), struct.pack('>f', usec).hex())
+        sec  = _reverseEndian(sec)
+        usec = _reverseEndian(usec)
+        # return big_endian_hex
+    
+    # return little_endian_hex
+    
     return (sec,usec)
 
 def getByteLength(str1):
@@ -519,9 +535,9 @@ def generateFromHeaders(headers, pcapfile, **kwargs):
         timestamp = headers[i-1]['timestamp']
         #Get/calculate timestamp
         if timestamp is None: #timestamp was not set, use current time
-            time = createTimestamp()
+            time = createTimestamp(reverse=True)
         else:
-            time = createTimestamp(time=timestamp)
+            time = createTimestamp(time=timestamp, reverse=True)
         #recall, time is a tuple (sec, usec)
 
         #L2 addresses
