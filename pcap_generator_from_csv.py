@@ -191,7 +191,6 @@ def _reverseEndian(hexstring):
 
     return little_endian
 
-import struct
 def createTimestamp(**kwargs):
     # this is a timestamp in seconds.microseconds, e.g., 1570435931.7557144
     _time = kwargs.get('time', time.time())
@@ -205,26 +204,15 @@ def createTimestamp(**kwargs):
     # time is a list now
     sec  = format(int(_time[0]), '08x')
     usec = format(int(_time[1]), '08x')
-    # convert the to hex
-    # sec = ("%08x" % int(sec))   # now, we have sec in hex (big endian)
-    # usec = ("%08x" % int(usec)) # now, we have usec in hex (big endian)
 
-    # little_endian_hex = (struct.pack('<f', sec).hex(),struct.pack('<f', usec).hex())
-    
     if(reverse):
-        # big_endian_hex = (struct.pack('>f', sec).hex(), struct.pack('>f', usec).hex())
         sec  = _reverseEndian(sec)
         usec = _reverseEndian(usec)
-        # return big_endian_hex
-    
-    # return little_endian_hex
     
     return (sec,usec)
 
 def getByteLength(str1):
     return int(len(''.join(str1.split())) / 2)
-
-
 
 first_byte_to_write = True
 
